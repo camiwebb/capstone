@@ -1,5 +1,8 @@
+require('dotenv').config();
 const express = require("express");
 const ViteExpress = require("vite-express");
+
+console.log('DATABASE_URL:', process.env.DATABASE_URL);
 
 const app = require('./app');
 const { syncAndSeed, client } = require('./db');
