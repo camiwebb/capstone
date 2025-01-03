@@ -1,8 +1,9 @@
 require('dotenv').config();
 const express = require('express');
 const router = express.Router();
-const jwt = require ('jsonwebtoken');
+const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const { user, restStop, review, comment } = require('../db/seed.js');
 
 
 const SECRET_KEY = process.env.SECRET_KEY;
@@ -107,7 +108,7 @@ router.get('/items/:itemId/reviews', async (req, res, next) => {
 router.post('/items/:itemId/reviews', authenticateUser, async (req, res, next) => {
   try {
     const { itemId } = req.params;
-    const { userId, rating, reviewText } = req.body;
+    const { userId, rating, reviewText } = req.userId;
 
     const newReview = await review.create({
       user_id: userId, 
@@ -138,7 +139,23 @@ router.get('/reviews/me', authenticateUser, async (req, res, next) => {
 });
 
 // Update a review
-//TODO: add route
+router.put('/items/:itemId/reviews/:reviewId', authenticateUser, async (req, res, next) => {
+  try { 
+    const { reviewId, itemId } = req.params;
+    const { rating, reviewText } = req.body;
+    
+    const review = await review.findOne({ where: { id: reviewId, location_id: itemId } });
+    if (!review) return res.status(404).json({ message: 'Review not found' });
+
+    review.rating = rating;
+    review.review_text = reviewText;
+    await review.save();
+
+    res.status(200).json(review);
+  } catch (err) {
+    next(err);
+  }
+});
 
 // Post a comment on a review
 router.post('/items/:itemId/reviews/:reviewId/comments', authenticateUser, async (req, res, next) => {

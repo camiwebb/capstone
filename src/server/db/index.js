@@ -1,7 +1,14 @@
+const { createTables } = require('./seed');
 const client = require('./client');
 
 const syncAndSeed = async()=> {
-  console.log('TODO CREATE TABLES');
+  console.log('Syncing and seeding the database...');
+
+  try {
+    
+  } catch (err) {
+    console.error("Error syncing and seeding:", err);
+  }
 };
 
 
