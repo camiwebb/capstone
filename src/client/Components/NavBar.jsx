@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Bar = ({ login })=> {
+const NavBar = ({ login })=> {
   return (
     <div>
       <h2>Bar</h2>
@@ -8,4 +8,4 @@ const Bar = ({ login })=> {
   );
 };
 
-export default Bar;
+export default NavBar;
