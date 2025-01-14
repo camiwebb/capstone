@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const RestStopList = () => {
   const [restStops, setRestStops] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchRestStops = async () => {
@@ -23,7 +25,7 @@ const RestStopList = () => {
 
   // Navigate to the details page for a specific rest stop
   const handleViewDetails = (itemId) => {
-    window.location.href = `/rest-stops/${itemId}`;
+    navigate(`/rest-stops/${itemId}`);
   };
 
   // Show a loading message while data is being fetched
@@ -41,7 +43,7 @@ const RestStopList = () => {
               <h3>{stop.name}</h3>
               <p>{stop.description}</p>
               <p>Rating: {stop.average_rating}</p>
-              <button onClick={() => handleViewDetails(stop.id)}>View Details</button>
+              <button className="view-details-button" onClick={() => handleViewDetails(stop.id)}>View Details</button>
             </div>
           ))
         ) : (

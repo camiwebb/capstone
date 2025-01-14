@@ -4,7 +4,7 @@ const client = require('../db/client');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-const { user, restStop, review, comment } = require('../db/seed.js');
+// const { user, restStop, review, comment } = require('../db/seed.js');
 
 
 const SECRET_KEY = process.env.SECRET_KEY;
@@ -24,7 +24,7 @@ const authenticateUser = (req, res, next) => {
 
 
 // Register route
-router.post('/api/auth/register', async (req, res, next) => {
+router.post('/auth/register', async (req, res, next) => {
   try {
     const { username, email, password } = req.body;
 
@@ -46,7 +46,7 @@ router.post('/api/auth/register', async (req, res, next) => {
 });
 
 // Login route
-router.post('/api/auth/login', async (req, res, next) => {
+router.post('/auth/login', async (req, res, next) => {
   try {
     const { username, password } = req.body;
     const result = await client.query('SELECT * FROM users WHERE username = $1', [username]);
@@ -65,7 +65,7 @@ router.post('/api/auth/login', async (req, res, next) => {
 });
 
 // Get logged-in user
-router.get('/api/auth/me', authenticateUser, async (req, res, next) => {
+router.get('/auth/me', authenticateUser, async (req, res, next) => {
   try {
     const user = await client.query('SELECT * FROM users WHERE id = $1', [req.userId]);
 
@@ -80,7 +80,7 @@ router.get('/api/auth/me', authenticateUser, async (req, res, next) => {
 });
 
 // Get all rest stops
-router.get('/api/rest-stops', async (req, res, next) => {
+router.get('/rest-stops', async (req, res, next) => {
   try {
     const result = await client.query('SELECT * FROM rest_stops');
     const restStops = result.rows;
@@ -96,10 +96,14 @@ router.get('/api/rest-stops', async (req, res, next) => {
 });
 
 // Get details for specific rest stop
-router.get('/api/rest-stops/:itemId', async (req, res, next) => {
+router.get('/rest-stops/:id', async (req, res, next) => {
+  const { id } = req.params;
+  console.log(`Looking for rest stop with ID: ${id}`);
+
   try {
-    const { itemId } = req.params;
-    const result = await client.query('SELECT * FROM rest_stops WHERE id = $1', [itemId]);
+    const result = await client.query('SELECT * FROM rest_stops WHERE id = $1::uuid', [id]);
+    console.log('Query result:', result.rows);
+
     const restStop = result.rows[0];
 
     if (!restStop) {
@@ -112,8 +116,29 @@ router.get('/api/rest-stops/:itemId', async (req, res, next) => {
   }
 });
 
+// Add a new rest stop
+router.post('/rest-stops', async (req, res, next) => {
+  try {
+      const { name, description, rating } = req.body;
+
+      if (!name || !description || !rating ) {
+        return res.status(400).json({ message: 'Missing required fields'})
+      }
+
+      const result = await client.query(
+        'INSERT INTO rest_stops (name, description, average_rating) VALUES ($1, $2, $3) RETURNING *',
+        [name, description, rating]
+      );
+
+      const newRestStop = result.rows[0];
+      res.status(201).json({ message: 'Rest stop created successfully', restStop: newRestStop });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Get reviews for specific rest stop
-router.get('/api/rest-stops/:itemId/reviews', async (req, res, next) => {
+router.get('/rest-stops/:itemId/reviews', async (req, res, next) => {
   try {
     const { itemId } = req.params;
     const result = await client.query('SELECT * FROM reviews WHERE location_id = $1', [itemId]);
@@ -126,7 +151,7 @@ router.get('/api/rest-stops/:itemId/reviews', async (req, res, next) => {
 });
 
 // Post a review for a rest stop
-router.post('/api/rest-stops/:itemId/reviews', authenticateUser, async (req, res, next) => {
+router.post('/rest-stops/:itemId/reviews', authenticateUser, async (req, res, next) => {
   try {
     const { itemId } = req.params;
     const { rating, reviewText } = req.body;
@@ -146,7 +171,7 @@ router.post('/api/rest-stops/:itemId/reviews', authenticateUser, async (req, res
 });
 
 // Get all reviews posted by logged-in user
-router.get('/api/reviews/me', authenticateUser, async (req, res, next) => {
+router.get('/reviews/me', authenticateUser, async (req, res, next) => {
   try {
     const result = await client.query('SELECT * FROM reviews WHERE user_id = $1', [req.userId]);
     const reviews = result.rows;
@@ -158,7 +183,7 @@ router.get('/api/reviews/me', authenticateUser, async (req, res, next) => {
 });
 
 // Update a review
-router.put('/api/reviews/:reviewId', authenticateUser, async (req, res, next) => {
+router.put('/reviews/:reviewId', authenticateUser, async (req, res, next) => {
   try {
     const { reviewId, itemId } = req.params;
     const { rating, reviewText } = req.body;
@@ -187,7 +212,7 @@ router.put('/api/reviews/:reviewId', authenticateUser, async (req, res, next) =>
 });
 
 // Post a comment on a review
-router.post('/api/reviews/:reviewId/comments', authenticateUser, async (req, res, next) => {
+router.post('/reviews/:reviewId/comments', authenticateUser, async (req, res, next) => {
   try {
     const { reviewId } = req.params;
     const { commentText } = req.body;
@@ -206,7 +231,7 @@ router.post('/api/reviews/:reviewId/comments', authenticateUser, async (req, res
 });
 
 // Update a comment
-router.put('/api/comments/:commentId', authenticateUser, async (req, res, next) => {
+router.put('/comments/:commentId', authenticateUser, async (req, res, next) => {
   try {
     const { commentId } = req.params;
     const { commentText } = req.body;
@@ -235,7 +260,7 @@ router.put('/api/comments/:commentId', authenticateUser, async (req, res, next) 
 });
 
 // Delete a comment
-router.delete('/api/comments/:commentId', authenticateUser, async (req, res, next) => {
+router.delete('/comments/:commentId', authenticateUser, async (req, res, next) => {
   try {
     const { commentId } = req.params;
     const userId = req.userId;
@@ -261,7 +286,7 @@ router.delete('/api/comments/:commentId', authenticateUser, async (req, res, nex
 });
 
 // Delete a review
-router.delete('/api/reviews/:reviewId', authenticateUser, async (req, res, next) => {
+router.delete('/reviews/:reviewId', authenticateUser, async (req, res, next) => {
   try {
     const { reviewId } = req.params;
     const userId = req.userId;
@@ -285,3 +310,5 @@ router.delete('/api/reviews/:reviewId', authenticateUser, async (req, res, next)
     next(err);
   }
 });
+
+module.exports = router;

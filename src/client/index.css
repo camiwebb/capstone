@@ -136,9 +136,9 @@ form h2 {
   color: #555;
 }
 
-.rest-stop-card button {
+.view-details-button {
   padding: 10px 15px;
-  background-color: #007bff;
+  background-color: #333;
   color: white;
   border: none;
   cursor: pointer;
@@ -146,6 +146,73 @@ form h2 {
   font-size: 1rem;
 }
 
-.rest-stop-card button:hover {
-  background-color: #0056b3;
+.view-details-button:hover {
+  background-color: #555;
+}
+
+/* Center the content */
+.rest-stop-container {
+  max-width: 800px;
+  margin: 50px auto;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Title */
+.rest-stop-container h1 {
+  font-size: 2rem;
+  color: #2c3e50;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+/* Description */
+.rest-stop-container p {
+  font-size: 1.1rem;
+  color: #7f8c8d;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+/* Rating */
+.rest-stop-container .rating {
+  font-size: 1.2rem;
+  color: #f37712;
+  font-weight: bold;
+}
+
+/* Error and Loading Messages */
+.error-message {
+  color: #e74c3c;
+  font-size: 1.2rem;
+  text-align: center;
+  margin-top: 20px;
+}
+
+.loading-message {
+  color: #3498db;
+  font-size: 1.2rem;
+  text-align: center;
+  margin-top: 20px;
+}
+
+/* Button */
+.rest-stop-container .back-button {
+  display: block;
+  width: 200px;
+  margin: 20px auto;
+  padding: 10px 15px;
+  background-color: #333;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  text-align: center;
+  cursor: pointer;
+}
+
+.rest-stop-container .back-button:hover {
+  background-color: #555;
 }
