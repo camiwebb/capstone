@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const client = require('../db/client');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
@@ -25,15 +26,20 @@ const authenticateUser = (req, res, next) => {
 // Register route
 router.post('/api/auth/register', async (req, res, next) => {
   try {
-    const { username, email, password } = req.body; 
+    const { username, email, password } = req.body;
 
-    const existingUser = await user.findOne({where: { username } });
-    if (existingUser) return res.status(400).json({message: 'Username already exists'});
+    const result = await client.query('SELECT * FROM users WHERE username = $1', [username]);
+    if (result.rows.length > 0) {
+      return res.status(400).json({ message: 'Username already exists' });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = await user.create({ username, email, password: hashedPassword});
+    const newUser = await client.query(
+      'INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING *',
+      [username, email, hashedPassword]
+    );
 
-    res.status(201).json({ message: 'User created successfully', user: newUser});
+    res.status(201).json({ message: 'User created successfully', user: newUser.rows[0] });
   } catch (err) {
     next(err);
   }
@@ -43,10 +49,11 @@ router.post('/api/auth/register', async (req, res, next) => {
 router.post('/api/auth/login', async (req, res, next) => {
   try {
     const { username, password } = req.body;
-    const user = await user.findOne({ where: {username} });
+    const result = await client.query('SELECT * FROM users WHERE username = $1', [username]);
 
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (result.rows.length === 0) return res.status(404).json({ message: 'User not found' });
 
+    const user = result.rows[0];
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) return res.status(400).json({ message: 'Invalid password' });
 
@@ -58,13 +65,15 @@ router.post('/api/auth/login', async (req, res, next) => {
 });
 
 // Get logged-in user
-router.get('/api/auth/me', (req, res, next) => {
+router.get('/api/auth/me', authenticateUser, async (req, res, next) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ message: 'User not authenticated' });
+    const user = await client.query('SELECT * FROM users WHERE id = $1', [req.userId]);
 
-    const decoded = jwt.verify(token, SECRET_KEY);
-    res.status(200).json({ userId: decoded.userId });
+    if (!user.rows.length) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.status(200).json(user.rows[0]);
   } catch (err) {
     next(err);
   }
@@ -74,7 +83,13 @@ router.get('/api/auth/me', (req, res, next) => {
 router.get('/api/rest-stops', async (req, res, next) => {
   try {
     const result = await client.query('SELECT * FROM rest_stops');
-    res.status(200).json(result.rows);
+    const restStops = result.rows;
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'No rest stops found' });
+    }
+
+    res.status(200).json(restStops);
   } catch (err) {
     next(err);
   }
@@ -84,9 +99,12 @@ router.get('/api/rest-stops', async (req, res, next) => {
 router.get('/api/rest-stops/:itemId', async (req, res, next) => {
   try {
     const { itemId } = req.params;
-    const restStop = await restStop.findByPk(itemId);
+    const result = await client.query('SELECT * FROM rest_stops WHERE id = $1', [itemId]);
+    const restStop = result.rows[0];
 
-    if (!restStop) return res.status(404).json({ message: 'Rest stop not found' });
+    if (!restStop) {
+      return res.status(404).json({ message: 'Rest stop not found' });
+    }
 
     res.status(200).json(restStop);
   } catch (err) {
@@ -98,7 +116,9 @@ router.get('/api/rest-stops/:itemId', async (req, res, next) => {
 router.get('/api/rest-stops/:itemId/reviews', async (req, res, next) => {
   try {
     const { itemId } = req.params;
-    const reviews = await review.findAll({ where: { location_id: itemId } });
+    const result = await client.query('SELECT * FROM reviews WHERE location_id = $1', [itemId]);
+    const reviews = result.rows;
+
     res.status(200).json(reviews);
   } catch (err) {
     next(err);
@@ -112,14 +132,14 @@ router.post('/api/rest-stops/:itemId/reviews', authenticateUser, async (req, res
     const { rating, reviewText } = req.body;
     const userId = req.userId;
 
-    const newReview = await review.create({
-      user_id: userId, 
-      location_id: itemId, 
-      rating, 
-      review_text: reviewText
-    });
+    const result = await client.query(
+      'INSERT INTO reviews (user_id, location_id, rating, review_text) VALUES ($1, $2, $3, $4) RETURNING *',
+      [userId, itemId, rating, reviewText]
+    );
 
+    const newReview = result.rows[0];
     res.status(201).json(newReview);
+
   } catch (err) {
     next(err);
   }
@@ -128,8 +148,8 @@ router.post('/api/rest-stops/:itemId/reviews', authenticateUser, async (req, res
 // Get all reviews posted by logged-in user
 router.get('/api/reviews/me', authenticateUser, async (req, res, next) => {
   try {
-    const decoded = jwt.verify(token, SECRET_KEY);
-    const reviews = await review.findAll({ where: {user_id: decoded.userId} });
+    const result = await client.query('SELECT * FROM reviews WHERE user_id = $1', [req.userId]);
+    const reviews = result.rows;
 
     res.status(200).json(reviews);
   } catch (err) {
@@ -138,41 +158,47 @@ router.get('/api/reviews/me', authenticateUser, async (req, res, next) => {
 });
 
 // Update a review
-router.put('/api/rest-stops/:itemId/reviews/:reviewId', authenticateUser, async (req, res, next) => {
-  try { 
+router.put('/api/reviews/:reviewId', authenticateUser, async (req, res, next) => {
+  try {
     const { reviewId, itemId } = req.params;
     const { rating, reviewText } = req.body;
-    
-    const review = await review.findOne({ where: { id: reviewId, location_id: itemId } });
-    if (!review) return res.status(404).json({ message: 'Review not found' });
+    const userId = req.userId;
 
-    if (review.user_id !== req.userId) {
-      return res.status(403).json({ message: 'You are not authorized to edit this review' });
+    const reviewResult = await client.query(
+      'SELECT * FROM reviews WHERE id = $1 AND user_id = $2',
+      [reviewId, userId]
+    );
+    const review = reviewResult.rows[0];
+
+    if (!review) {
+      return res.status(404).json({ message: 'Review not found or you do not have permission to update it' });
     }
 
-    review.rating = rating;
-    review.review_text = reviewText;
-    await review.save();
+    const updatedReviewResult = await client.query(
+      'UPDATE reviews SET rating = $1, review_text = $2 WHERE id = $3 RETURNING *',
+      [rating, reviewText, reviewId]
+    );
 
-    res.status(200).json(review);
+    const updatedReview = updatedReviewResult.rows[0];
+    res.status(200).json(updatedReview);
   } catch (err) {
     next(err);
   }
 });
 
 // Post a comment on a review
-router.post('/api/rest-stops/:itemId/reviews/:reviewId/comments', authenticateUser, async (req, res, next) => {
+router.post('/api/reviews/:reviewId/comments', authenticateUser, async (req, res, next) => {
   try {
-    const { reviewId } = req.params; 
-    const userId = req.userId;
+    const { reviewId } = req.params;
     const { commentText } = req.body;
+    const userId = req.userId;
 
-    const newComment = await comment.create({
-      review_id: reviewId, 
-      user_id: userId, 
-      comment_text: commentText
-    });
+    const result = await client.query(
+      'INSERT INTO comments (review_id, user_id, comment_text) VALUES ($1, $2, $3) RETURNING *',
+      [reviewId, userId, commentText]
+    );
 
+    const newComment = result.rows[0];
     res.status(201).json(newComment);
   } catch (err) {
     next(err);
@@ -180,36 +206,54 @@ router.post('/api/rest-stops/:itemId/reviews/:reviewId/comments', authenticateUs
 });
 
 // Update a comment
-router.put('/api/users/:userId/comments/:commentId', authenticateUser, async (req, res, next) => {
+router.put('/api/comments/:commentId', authenticateUser, async (req, res, next) => {
   try {
-    const { userId, commentId } = req.params; 
+    const { commentId } = req.params;
     const { commentText } = req.body;
+    const userId = req.userId;
 
-    const comment = await comment.findOne({ where: { id: commentId, user_id: userId } });
-    if (!comment) return res.status(404).json({ message: 'Comment not found'});
+    const commentResult = await client.query(
+      'SELECT * FROM comments WHERE id = $1 AND user_id = $2',
+      [commentId, userId]
+    );
+    const comment = commentResult.rows[0];
 
-    comment.comment_text = commentText; 
-    await comment.save();
+    if (!comment) {
+      return res.status(404).json({ message: 'Comment not found or you do not have permission to update it' });
+    }
 
-    res.status(200).json(comment);
+    const updatedCommentResult = await client.query(
+      'UPDATE comments SET comment_text = $1 WHERE id = $2 RETURNING *',
+      [commentText, commentId]
+    );
+
+    const updatedComment = updatedCommentResult.rows[0];
+    res.status(200).json(updatedComment);
   } catch (err) {
     next(err);
   }
 });
 
 // Delete a comment
-router.delete('/api/users/:userId/comments/:commentId', authenticateUser, async (req, res, next) => {
+router.delete('/api/comments/:commentId', authenticateUser, async (req, res, next) => {
   try {
-    const { userId, commentId } = req.params;
-    const comment = await comment.findOne({ where: { id: commentId, user_id: userId } });
+    const { commentId } = req.params;
+    const userId = req.userId;
 
-    if (!comment) return res.status(404).json({ message: 'Comment not found' });
+    // Check if the comment exists and belongs to the logged-in user
+    const commentResult = await client.query(
+      'SELECT * FROM comments WHERE id = $1 AND user_id = $2',
+      [commentId, userId]
+    );
+    const comment = commentResult.rows[0];
 
-    if (comment.user_id !== req.userId) {
-      return res.status(403).json({ message: 'You are not authorized to delete this comment' });
+    if (!comment) {
+      return res.status(404).json({ message: 'Comment not found or you do not have permission to delete it' });
     }
 
-    await comment.destroy();
+    // Delete the comment
+    await client.query('DELETE FROM comments WHERE id = $1', [commentId]);
+
     res.status(204).send();
   } catch (err) {
     next(err);
@@ -217,22 +261,27 @@ router.delete('/api/users/:userId/comments/:commentId', authenticateUser, async 
 });
 
 // Delete a review
-router.delete('/api/users/:userId/reviews/:reviewId', authenticateUser, async (req, res, next) => {
+router.delete('/api/reviews/:reviewId', authenticateUser, async (req, res, next) => {
   try {
-    const { userId, reviewId } = req.params;
-    const review = await review.findOne({ where: { id: reviewId, user_id: userId } });
+    const { reviewId } = req.params;
+    const userId = req.userId;
 
-    if (!review) return res.status(404).json({ message: 'Review not found' });
+    // Check if the review exists and belongs to the logged-in user
+    const reviewResult = await client.query(
+      'SELECT * FROM reviews WHERE id = $1 AND user_id = $2',
+      [reviewId, userId]
+    );
+    const review = reviewResult.rows[0];
 
-    if (review.user_id !== req.userId) {
-      return res.status(403).json({ message: 'You are not authorized to delete this review' });
+    if (!review) {
+      return res.status(404).json({ message: 'Review not found or you do not have permission to delete it' });
     }
 
-    await review.destroy();
+    // Delete the review
+    await client.query('DELETE FROM reviews WHERE id = $1', [reviewId]);
+
     res.status(204).send();
   } catch (err) {
     next(err);
   }
 });
-
-module.exports = router;

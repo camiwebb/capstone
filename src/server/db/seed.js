@@ -1,5 +1,4 @@
 require('dotenv').config();
-const { Client } = require('pg');
 const client = require('./client');
 
 const users = [
@@ -43,9 +42,9 @@ const createTables = async () => {
         );
 
         CREATE TABLE reviews (
-            id SERIAL PRIMARY KEY,
-            user_id UUID REFERENCES users(id) NOT NULL,
-            location_id UUID REFERENCES rest_stops(id) NOT NULL,
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            user_id UUID REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL,
+            location_id UUID REFERENCES rest_stops(id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL,
             rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
             review_text TEXT, 
             created_at TIMESTAMP DEFAULT current_timestamp
@@ -53,8 +52,8 @@ const createTables = async () => {
 
         CREATE TABLE comments (
             id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-            review_id SERIAL REFERENCES reviews(id),
-            user_id UUID REFERENCES users(id),
+            review_id UUID REFERENCES reviews(id) ON DELETE CASCADE ON UPDATE CASCADE,
+            user_id UUID REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
             comment_text TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT current_timestamp
         );
@@ -93,16 +92,47 @@ const seedData = async ()=> {
             client.query(
               `INSERT INTO reviews (user_id, location_id, rating, review_text) VALUES ($1, $2, $3, $4)`,
               [
-                userResults[index % userResults.length].rows[0].id,
-                restStopResults[index % restStopResults.length].rows[0].id,
-                review.rating,
-                review.review_text,
+                    userResults[index % userResults.length].rows[0].id,
+                    restStopResults[index % restStopResults.length].rows[0].id,
+                    review.rating,
+                    review.review_text,
               ]
             )
           );
           await Promise.all(reviewInsertPromises);
+
+          const commentInsertPromises = [
+            {
+                reviewIndex: 0,
+                userIndex: 1,
+                commentText: 'I agree, great place!',
+            },
+            {
+                reviewIndex: 1,
+                userIndex: 0,
+                commentText: 'It was okay, could use more vending options.',
+            },
+        ].map(async (commentData) => {
+            const reviewId = (await client.query(
+                `SELECT id FROM reviews LIMIT 1 OFFSET $1`,
+                [commentData.reviewIndex]
+            )).rows[0].id;
+
+            const userId = userResults[commentData.userIndex].rows[0].id;
+
+            console.log(`Inserting comment for review: ${reviewId}`);
+            return client.query(
+                `INSERT INTO comments (id, review_id, user_id, comment_text) VALUES ($1, $2, $3, $4)`,
+                [
+                    reviewId,
+                    userId,
+                    commentData.commentText,
+                ]
+            );
+        });
+        await Promise.all(commentInsertPromises);
       
-          console.log('Seed data inserted successfully.');
+        console.log('Seed data inserted successfully.');
     } catch (err) {
         console.error('Error inserting seed data:', err);
     }
