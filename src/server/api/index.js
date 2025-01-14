@@ -8,6 +8,7 @@ const { user, restStop, review, comment } = require('../db/seed.js');
 
 const SECRET_KEY = process.env.SECRET_KEY;
 
+
 // Verify token for routes requiring authentication
 const authenticateUser = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
@@ -22,7 +23,7 @@ const authenticateUser = (req, res, next) => {
 
 
 // Register route
-router.post('/auth/register', async (req, res, next) => {
+router.post('/api/auth/register', async (req, res, next) => {
   try {
     const { username, email, password } = req.body; 
 
@@ -39,7 +40,7 @@ router.post('/auth/register', async (req, res, next) => {
 });
 
 // Login route
-router.post('/auth/login', async (req, res, next) => {
+router.post('/api/auth/login', async (req, res, next) => {
   try {
     const { username, password } = req.body;
     const user = await user.findOne({ where: {username} });
@@ -57,7 +58,7 @@ router.post('/auth/login', async (req, res, next) => {
 });
 
 // Get logged-in user
-router.get('/auth/me', (req, res, next) => {
+router.get('/api/auth/me', (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ message: 'User not authenticated' });
@@ -70,17 +71,17 @@ router.get('/auth/me', (req, res, next) => {
 });
 
 // Get all rest stops
-router.get('/items', async (req, res, next) => {
+router.get('/api/rest-stops', async (req, res, next) => {
   try {
-    const restStops = await restStop.findAll();
-    res.status(200).json(restStops);
+    const result = await client.query('SELECT * FROM rest_stops');
+    res.status(200).json(result.rows);
   } catch (err) {
     next(err);
   }
 });
 
 // Get details for specific rest stop
-router.get('/items/:itemId', async (req, res, next) => {
+router.get('/api/rest-stops/:itemId', async (req, res, next) => {
   try {
     const { itemId } = req.params;
     const restStop = await restStop.findByPk(itemId);
@@ -94,7 +95,7 @@ router.get('/items/:itemId', async (req, res, next) => {
 });
 
 // Get reviews for specific rest stop
-router.get('/items/:itemId/reviews', async (req, res, next) => {
+router.get('/api/rest-stops/:itemId/reviews', async (req, res, next) => {
   try {
     const { itemId } = req.params;
     const reviews = await review.findAll({ where: { location_id: itemId } });
@@ -105,10 +106,11 @@ router.get('/items/:itemId/reviews', async (req, res, next) => {
 });
 
 // Post a review for a rest stop
-router.post('/items/:itemId/reviews', authenticateUser, async (req, res, next) => {
+router.post('/api/rest-stops/:itemId/reviews', authenticateUser, async (req, res, next) => {
   try {
     const { itemId } = req.params;
-    const { userId, rating, reviewText } = req.userId;
+    const { rating, reviewText } = req.body;
+    const userId = req.userId;
 
     const newReview = await review.create({
       user_id: userId, 
@@ -124,11 +126,8 @@ router.post('/items/:itemId/reviews', authenticateUser, async (req, res, next) =
 });
 
 // Get all reviews posted by logged-in user
-router.get('/reviews/me', authenticateUser, async (req, res, next) => {
+router.get('/api/reviews/me', authenticateUser, async (req, res, next) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ message: 'Please login to view your reviews' });
-
     const decoded = jwt.verify(token, SECRET_KEY);
     const reviews = await review.findAll({ where: {user_id: decoded.userId} });
 
@@ -139,13 +138,17 @@ router.get('/reviews/me', authenticateUser, async (req, res, next) => {
 });
 
 // Update a review
-router.put('/items/:itemId/reviews/:reviewId', authenticateUser, async (req, res, next) => {
+router.put('/api/rest-stops/:itemId/reviews/:reviewId', authenticateUser, async (req, res, next) => {
   try { 
     const { reviewId, itemId } = req.params;
     const { rating, reviewText } = req.body;
     
     const review = await review.findOne({ where: { id: reviewId, location_id: itemId } });
     if (!review) return res.status(404).json({ message: 'Review not found' });
+
+    if (review.user_id !== req.userId) {
+      return res.status(403).json({ message: 'You are not authorized to edit this review' });
+    }
 
     review.rating = rating;
     review.review_text = reviewText;
@@ -158,10 +161,11 @@ router.put('/items/:itemId/reviews/:reviewId', authenticateUser, async (req, res
 });
 
 // Post a comment on a review
-router.post('/items/:itemId/reviews/:reviewId/comments', authenticateUser, async (req, res, next) => {
+router.post('/api/rest-stops/:itemId/reviews/:reviewId/comments', authenticateUser, async (req, res, next) => {
   try {
     const { reviewId } = req.params; 
-    const { userId, commentText } = req.body;
+    const userId = req.userId;
+    const { commentText } = req.body;
 
     const newComment = await comment.create({
       review_id: reviewId, 
@@ -176,7 +180,7 @@ router.post('/items/:itemId/reviews/:reviewId/comments', authenticateUser, async
 });
 
 // Update a comment
-router.put('/users/:userId/comments/:commentId', authenticateUser, async (req, res, next) => {
+router.put('/api/users/:userId/comments/:commentId', authenticateUser, async (req, res, next) => {
   try {
     const { userId, commentId } = req.params; 
     const { commentText } = req.body;
@@ -194,12 +198,16 @@ router.put('/users/:userId/comments/:commentId', authenticateUser, async (req, r
 });
 
 // Delete a comment
-router.delete('/users/:userId/comments/:commentId', authenticateUser, async (req, res, next) => {
+router.delete('/api/users/:userId/comments/:commentId', authenticateUser, async (req, res, next) => {
   try {
     const { userId, commentId } = req.params;
     const comment = await comment.findOne({ where: { id: commentId, user_id: userId } });
 
     if (!comment) return res.status(404).json({ message: 'Comment not found' });
+
+    if (comment.user_id !== req.userId) {
+      return res.status(403).json({ message: 'You are not authorized to delete this comment' });
+    }
 
     await comment.destroy();
     res.status(204).send();
@@ -209,12 +217,16 @@ router.delete('/users/:userId/comments/:commentId', authenticateUser, async (req
 });
 
 // Delete a review
-router.delete('/users/:userId/reviews/:reviewId', authenticateUser, async (req, res, next) => {
+router.delete('/api/users/:userId/reviews/:reviewId', authenticateUser, async (req, res, next) => {
   try {
     const { userId, reviewId } = req.params;
     const review = await review.findOne({ where: { id: reviewId, user_id: userId } });
 
-    if (!review) return res.status(404).json({ message: 'Review no found' });
+    if (!review) return res.status(404).json({ message: 'Review not found' });
+
+    if (review.user_id !== req.userId) {
+      return res.status(403).json({ message: 'You are not authorized to delete this review' });
+    }
 
     await review.destroy();
     res.status(204).send();

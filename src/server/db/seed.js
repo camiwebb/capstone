@@ -2,6 +2,22 @@ require('dotenv').config();
 const { Client } = require('pg');
 const client = require('./client');
 
+const users = [
+    { username: 'johndoe', email: 'johndoe@example.com', password: 'password123', role: 'user'},
+    { username: 'janedoe', email: 'janedoe@example.com', password: 'password456', role: 'admin'}
+];
+
+const restStops = [
+    { name: 'I-15 Rest Area - Northbound', description: 'Clean restrooms and a pet area.', average_rating: 4.2 },
+    { name: 'Scipio Rest Area', description: 'Vending machines and picnic tables.', average_rating: 3.8 },
+    { name: 'Echo Canyon Rest Area', description: 'Wi-Fi and scenic views.', average_rating: 4.5 },
+];
+
+const reviews = [
+    { rating: 5, review_text: 'Great place to stop and rest!' },
+    { rating: 3, review_text: 'It was okay, nothing special.' },
+  ];
+
 const createTables = async () => {
     const SQL = /*SQL*/ `
         CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -47,9 +63,48 @@ const createTables = async () => {
     try {
         await client.query(SQL);
         console.log('Tables created successfully.');
+
+        await seedData();
         
     } catch (err) {
         console.error("Error creating tables:", err);
+    }
+};
+
+const seedData = async ()=> {
+    try {
+        const userInsertPromises = users.map(user =>
+            client.query(
+              `INSERT INTO users (username, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id`,
+              [user.username, user.email, user.password, user.role]
+            )
+          );
+          const userResults = await Promise.all(userInsertPromises);
+      
+          const restStopInsertPromises = restStops.map(restStop =>
+            client.query(
+              `INSERT INTO rest_stops (name, description, average_rating) VALUES ($1, $2, $3) RETURNING id`,
+              [restStop.name, restStop.description, restStop.average_rating]
+            )
+          );
+          const restStopResults = await Promise.all(restStopInsertPromises);
+      
+          const reviewInsertPromises = reviews.map((review, index) =>
+            client.query(
+              `INSERT INTO reviews (user_id, location_id, rating, review_text) VALUES ($1, $2, $3, $4)`,
+              [
+                userResults[index % userResults.length].rows[0].id,
+                restStopResults[index % restStopResults.length].rows[0].id,
+                review.rating,
+                review.review_text,
+              ]
+            )
+          );
+          await Promise.all(reviewInsertPromises);
+      
+          console.log('Seed data inserted successfully.');
+    } catch (err) {
+        console.error('Error inserting seed data:', err);
     }
 };
 

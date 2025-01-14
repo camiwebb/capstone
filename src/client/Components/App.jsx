@@ -1,6 +1,6 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import Navbar from './Navbar';
+import NavBar from './NavBar';
 import Home from './Home';
 import RestStopList from './RestStopList';
 import RestStopDetails from './RestStopDetails';
@@ -11,14 +11,14 @@ import AuthForm from './AuthForm';
 const App = ()=> {
   return (
       <div>
-        <Navbar />
+        <NavBar />
         <Routes>
-          <Route path="/" element={<Home />}></Route>
-          <Route path="/rest-stops" element={<RestStopList />}></Route>
-          <Route path="/rest-stops/:id" element={<RestStopDetails />}></Route>
-          <Route path="/account" element={<Account />}></Route>
-          <Route path="/add-review" element={<ReviewForm />}></Route>
-          <Route path='/sign-up' element={<AuthForm />}></Route>
+          <Route path="/" element={<Home />} />
+          <Route path="/rest-stops" element={<RestStopList />} />
+          <Route path="/rest-stops/:id" element={<RestStopDetails />} />
+          <Route path="/account" element={<Account />} />
+          <Route path="/add-review" element={<ReviewForm />} />
+          <Route path='/sign-up' element={<AuthForm />} />
         </Routes>
       </div>
   );
