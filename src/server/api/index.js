@@ -98,12 +98,9 @@ router.get('/rest-stops', async (req, res, next) => {
 // Get details for specific rest stop
 router.get('/rest-stops/:id', async (req, res, next) => {
   const { id } = req.params;
-  console.log(`Looking for rest stop with ID: ${id}`);
 
   try {
     const result = await client.query('SELECT * FROM rest_stops WHERE id = $1::uuid', [id]);
-    console.log('Query result:', result.rows);
-
     const restStop = result.rows[0];
 
     if (!restStop) {

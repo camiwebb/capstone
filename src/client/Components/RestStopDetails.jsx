@@ -9,10 +9,10 @@ const RestStopDetails = () => {
   const navigate = useNavigate();
 
   const goBack = () => {
-    navigate(-1); // Navigate back to the previous page
+    navigate(-1);
   };
 
-  // Fetch the rest stop data when the component mounts
+  // Fetch the rest stop data
   useEffect(() => {
     const fetchRestStop = async () => {
       try {

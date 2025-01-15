@@ -23,12 +23,10 @@ const RestStopList = () => {
     fetchRestStops();
   }, []);
 
-  // Navigate to the details page for a specific rest stop
   const handleViewDetails = (itemId) => {
     navigate(`/rest-stops/${itemId}`);
   };
 
-  // Show a loading message while data is being fetched
   if (loading) {
     return <div>Loading...</div>;
   }
