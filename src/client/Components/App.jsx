@@ -16,7 +16,7 @@ const App = ()=> {
           <Route path="/" element={<Home />} />
           <Route path="/rest-stops" element={<RestStopList />} />
           <Route path="/rest-stops/:id" element={<RestStopDetails />} />
-          <Route path="/account" element={<Account />} />
+          <Route path="/account" element={ <Account />} />
           <Route path="/add-review" element={<ReviewForm />} />
           <Route path='/sign-up' element={<AuthForm />} />
         </Routes>
