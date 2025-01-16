@@ -141,6 +141,8 @@ router.get('/rest-stops/:itemId/reviews', async (req, res, next) => {
     const result = await client.query('SELECT * FROM reviews WHERE location_id = $1', [itemId]);
     const reviews = result.rows;
 
+    console.log('Fetched reviews:', reviews);
+
     res.status(200).json(reviews);
   } catch (err) {
     next(err);

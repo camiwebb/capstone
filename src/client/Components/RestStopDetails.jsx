@@ -4,15 +4,15 @@ import { useParams, useNavigate } from 'react-router-dom';
 const RestStopDetails = () => {
   const { id } = useParams(); 
   const [restStop, setRestStop] = useState(null);
+  const [reviews, setReviews] = useState([]);
   const [error, setError] = useState(null);
-
   const navigate = useNavigate();
 
   const goBack = () => {
     navigate(-1);
   };
 
-  // Fetch the rest stop data
+
   useEffect(() => {
     const fetchRestStop = async () => {
       try {
@@ -27,7 +27,21 @@ const RestStopDetails = () => {
       }
     };
 
+    const fetchReviews = async () => {
+      try {
+       const response = await fetch(`http://localhost:3000/api/rest-stops/${id}/reviews`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch reviews');
+        }
+        const data = await response.json();
+        setReviews(data);
+      } catch (err) {
+        setError(err.message);
+      }
+    };
+
     fetchRestStop();
+    fetchReviews();
   }, [id]);
 
   if (error) {
@@ -46,6 +60,25 @@ const RestStopDetails = () => {
       <button className="back-button" onClick={goBack}>
         Go Back
       </button>
+
+      <h2>Reviews</h2>
+    {reviews.length > 0 ? (
+      <ul className="reviews-list">
+        {reviews.map((review) => (
+          <li key={review.id} className="review-item">
+            {/* Show review text */}
+            <p><strong>Review:</strong> {review.review_text}</p>
+            {/* Show rating */}
+            <p><strong>Rating:</strong> {review.rating}</p>
+            {/* Optionally format `created_at` */}
+            <p><strong>Created At:</strong> {new Date(review.created_at).toLocaleDateString()}</p>
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p>No reviews yet. Be the first to add one!</p>
+    )}
+
     </div>
   );
 };
