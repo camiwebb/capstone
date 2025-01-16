@@ -98,12 +98,9 @@ router.get('/rest-stops', async (req, res, next) => {
 // Get details for specific rest stop
 router.get('/rest-stops/:id', async (req, res, next) => {
   const { id } = req.params;
-  console.log(`Looking for rest stop with ID: ${id}`);
 
   try {
     const result = await client.query('SELECT * FROM rest_stops WHERE id = $1::uuid', [id]);
-    console.log('Query result:', result.rows);
-
     const restStop = result.rows[0];
 
     if (!restStop) {
@@ -143,6 +140,8 @@ router.get('/rest-stops/:itemId/reviews', async (req, res, next) => {
     const { itemId } = req.params;
     const result = await client.query('SELECT * FROM reviews WHERE location_id = $1', [itemId]);
     const reviews = result.rows;
+
+    console.log('Fetched reviews:', reviews);
 
     res.status(200).json(reviews);
   } catch (err) {

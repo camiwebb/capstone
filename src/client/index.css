@@ -150,7 +150,6 @@ form h2 {
   background-color: #555;
 }
 
-/* Center the content */
 .rest-stop-container {
   max-width: 800px;
   margin: 50px auto;
@@ -160,7 +159,6 @@ form h2 {
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-/* Title */
 .rest-stop-container h1 {
   font-size: 2rem;
   color: #2c3e50;
@@ -168,7 +166,6 @@ form h2 {
   text-align: center;
 }
 
-/* Description */
 .rest-stop-container p {
   font-size: 1.1rem;
   color: #7f8c8d;
@@ -176,14 +173,12 @@ form h2 {
   margin-bottom: 20px;
 }
 
-/* Rating */
 .rest-stop-container .rating {
   font-size: 1.2rem;
   color: #f37712;
   font-weight: bold;
 }
 
-/* Error and Loading Messages */
 .error-message {
   color: #e74c3c;
   font-size: 1.2rem;
@@ -198,7 +193,6 @@ form h2 {
   margin-top: 20px;
 }
 
-/* Button */
 .rest-stop-container .back-button {
   display: block;
   width: 200px;
@@ -215,4 +209,37 @@ form h2 {
 
 .rest-stop-container .back-button:hover {
   background-color: #555;
+}
+
+.reviews-list {
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0;
+}
+
+.review-item {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 5px;
+  border: 1px solid #ddd;
+}
+
+.review-item p {
+  margin: 0.25rem 0;
+}
+
+.review-item strong {
+  color: #343a40;
+}
+
+.review-item .rating {
+  color: #ffc107;
+  font-weight: bold;
+}
+
+.reviews-list + p {
+  text-align: center;
+  color: #6c757d;
+  font-style: italic;
 }
