@@ -66,6 +66,7 @@ const createTables = async () => {
             username VARCHAR(100) UNIQUE NOT NULL,
             email VARCHAR(100) UNIQUE NOT NULL,
             password TEXT NOT NULL,
+            name VARCHAR(100) NOT NULL,
             role VARCHAR(20) DEFAULT 'user'
         );
 
@@ -109,7 +110,7 @@ const seedData = async ()=> {
         const userResults = await Promise.all(
             users.map(user =>
                 client.query(
-                    `INSERT INTO users (username, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id`,
+                    `INSERT INTO users (username, email, password, name) VALUES ($1, $2, $3, $4) RETURNING id`,
                     [user.username, user.email, user.password, user.role]
                 )
             )
@@ -123,6 +124,8 @@ const seedData = async ()=> {
                 )
             )
         );
+
+        console.log('Inserted Rest Stops:', restStopResults);
 
         const reviewResults = await Promise.all(
             reviews.map((review, index) =>

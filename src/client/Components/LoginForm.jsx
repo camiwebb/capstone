@@ -1,20 +1,18 @@
 import React, { useState } from 'react';
 import { useAuth } from './AuthContext';
 
-function AuthForm({ type }) {
-  const { login } = useAuth(); 
+function LoginForm() {
+  const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const body = { username, email, password, name };
+    const body = { username, password };
 
     try {
-      const response = await fetch('/api/register', {
+      const response = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -27,20 +25,13 @@ function AuthForm({ type }) {
         alert(data.message);
       }
     } catch (error) {
-      console.error('Error during login/registration:', error);
+      console.error('Error during login:', error);
     }
   };
 
   return (
     <form onSubmit={handleSubmit}>
-      <h2>Register</h2>
-      <input
-        type="text"
-        placeholder="Full Name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        required
-      />
+      <h2>Login</h2>
       <input
         type="text"
         placeholder="Username"
@@ -48,13 +39,6 @@ function AuthForm({ type }) {
         onChange={(e) => setUsername(e.target.value)}
         required
       />
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
       <input
         type="password"
         placeholder="Password"
@@ -62,9 +46,9 @@ function AuthForm({ type }) {
         onChange={(e) => setPassword(e.target.value)}
         required
       />
-      <button type="submit">Register</button>
+      <button type="submit">Login</button>
     </form>
   );
 }
 
-export default AuthForm;
+export default LoginForm;

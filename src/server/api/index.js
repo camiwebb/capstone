@@ -6,27 +6,33 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 // const { user, restStop, review, comment } = require('../db/seed.js');
 
-
 const SECRET_KEY = process.env.SECRET_KEY;
-
 
 // Verify token for routes requiring authentication
 const authenticateUser = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ message: 'User not authenticated' });
+  const authHeader = req.headers.authorization;
+  console.log('Authorization Header:', authHeader);
 
-  jwt.verify(token, SECRET_KEY, (err, decoded) => {
-    if (err) return res.status(403).json({ message: 'Invalid token' });
-    req.userId = decoded.userId;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'User not authenticated' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, SECRET_KEY);
+    console.log('Decoded Token:', decoded);
+    req.userId = decoded.id;
     next();
-  });
+  } catch (err) {
+    console.error('Token verification failed:', err.message);
+    return res.status(401).json({ message: 'User not authenticated' });
+  }
 };
 
-
 // Register route
-router.post('/auth/register', async (req, res, next) => {
+router.post('/register', async (req, res, next) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, email, password, name } = req.body;
 
     const result = await client.query('SELECT * FROM users WHERE username = $1', [username]);
     if (result.rows.length > 0) {
@@ -35,8 +41,8 @@ router.post('/auth/register', async (req, res, next) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = await client.query(
-      'INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING *',
-      [username, email, hashedPassword]
+      'INSERT INTO users (username, email, password, name) VALUES ($1, $2, $3,  $4) RETURNING id, username, email, name',
+      [username, email, hashedPassword, name]
     );
 
     res.status(201).json({ message: 'User created successfully', user: newUser.rows[0] });
@@ -46,7 +52,7 @@ router.post('/auth/register', async (req, res, next) => {
 });
 
 // Login route
-router.post('/auth/login', async (req, res, next) => {
+router.post('/login', async (req, res, next) => {
   try {
     const { username, password } = req.body;
     const result = await client.query('SELECT * FROM users WHERE username = $1', [username]);
@@ -65,9 +71,9 @@ router.post('/auth/login', async (req, res, next) => {
 });
 
 // Get logged-in user
-router.get('/auth/me', authenticateUser, async (req, res, next) => {
+router.get('/me', authenticateUser, async (req, res, next) => {
   try {
-    const user = await client.query('SELECT * FROM users WHERE id = $1', [req.userId]);
+    const user = await client.query('SELECT id, username, email FROM users WHERE id = $1', [req.userId]);
 
     if (!user.rows.length) {
       return res.status(404).json({ message: 'User not found' });
@@ -129,6 +135,36 @@ router.post('/rest-stops', async (req, res, next) => {
 
       const newRestStop = result.rows[0];
       res.status(201).json({ message: 'Rest stop created successfully', restStop: newRestStop });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Get all reviews
+router.get('/reviews', authenticateUser, async (req, res, next) => {
+  try {
+    const result = await client.query('SELECT * FROM reviews');
+    const reviews = result.rows;
+
+    res.status(200).json(reviews);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Post a new review
+router.post('/reviews', authenticateUser, async (req, res, next) => {
+  try {
+    const { rating, reviewText, locationId } = req.body;
+    const userId = req.userId;
+
+    const result = await client.query(
+      'INSERT INTO reviews (user_id, location_id, rating, review_text) VALUES ($1, $2, $3, $4) RETURNING *',
+      [userId, locationId, rating, reviewText]
+    );
+
+    const newReview = result.rows[0];
+    res.status(201).json(newReview);
   } catch (err) {
     next(err);
   }

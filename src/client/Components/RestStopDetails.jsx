@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom'; 
 
-const RestStopDetails = () => {
+const RestStopDetails = ( {isLoggedIn} ) => {
   const { id } = useParams(); 
   const [restStop, setRestStop] = useState(null);
   const [reviews, setReviews] = useState([]);
@@ -12,6 +12,9 @@ const RestStopDetails = () => {
     navigate(-1);
   };
 
+  const handleAddReview = () => {
+    navigate('/add-review', { state: { restStopId: id } });
+  };
 
   useEffect(() => {
     const fetchRestStop = async () => {
@@ -60,6 +63,12 @@ const RestStopDetails = () => {
       <button className="back-button" onClick={goBack}>
         Go Back
       </button>
+      
+      {isLoggedIn && (
+        <button className="add-review-button" onClick={handleAddReview}>
+          Add Review
+        </button>
+      )}
 
       <h2>Reviews</h2>
     {reviews.length > 0 ? (

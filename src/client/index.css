@@ -243,3 +243,73 @@ form h2 {
   color: #6c757d;
   font-style: italic;
 }
+
+.add-review-form {
+  max-width: 500px;
+  margin: 30px auto;
+  padding: 20px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.add-review-form h2 {
+  text-align: center;
+  font-size: 1.8rem;
+  margin-bottom: 15px;
+  color: #2c3e50;
+}
+
+.add-review-form label {
+  display: block;
+  font-size: 1rem;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.add-review-form input,
+.add-review-form textarea,
+.add-review-form select {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.add-review-form textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.add-review-form button {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  background-color: #333;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.add-review-form button:hover {
+  background-color: #555;
+}
+
+.add-review-form .error-message {
+  color: #e74c3c;
+  font-size: 0.9rem;
+  margin-top: -10px;
+  margin-bottom: 10px;
+}
+
+.add-review-form .success-message {
+  color: #2ecc71;
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+  text-align: center;
+}
