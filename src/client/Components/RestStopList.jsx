@@ -39,7 +39,6 @@ const RestStopList = () => {
           restStops.map((stop) => (
             <div key={stop.id} className="rest-stop-card">
               <h3>{stop.name}</h3>
-              <p>{stop.description}</p>
               <p>Rating: {stop.average_rating}</p>
               <button className="view-details-button" onClick={() => handleViewDetails(stop.id)}>View Details</button>
             </div>

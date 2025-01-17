@@ -7,29 +7,26 @@ const Account = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  const token = localStorage.getItem('authToken');
-  const loggedIn = token ? true : false;
+  const token = localStorage.getItem('token');
+  const loggedIn = Boolean(token);
 
   useEffect(() => {
-    if (loggedIn) {
+    if (!loggedIn) {
+      navigate('/login');
+    } else {
       fetchUserDetails();
       fetchUserReviews();
     }
-  }, [loggedIn]);
+  }, [loggedIn, navigate]);
 
   const fetchUserDetails = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch('http://localhost:3000/api/auth/me', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+      const response = await fetch('/api/me', {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      if (!response.ok) {
-        throw new Error('Failed to fetch user details');
-      }
+
+      if (!response.ok) throw new Error('Failed to fetch user details');
+
       const data = await response.json();
       setUserDetails(data);
     } catch (err) {
@@ -40,7 +37,7 @@ const Account = () => {
   const fetchUserReviews = async () => {
     try {
       if (!userDetails) return;
-      const token = localStorage.getItem('authToken');
+      
       const response = await fetch(`http://localhost:3000/api/users/${userDetails.id}/reviews`, {
         method: 'GET',
         headers: {
@@ -48,6 +45,7 @@ const Account = () => {
           'Authorization': `Bearer ${token}`,
         },
       });
+
       if (!response.ok) {
         throw new Error('Failed to fetch user reviews');
       }
@@ -88,7 +86,7 @@ const Account = () => {
       ) : (
         <div>
           <h2>Login to view your account</h2>
-          <button onClick={() => navigate('/sign-up')}>Login</button>
+          <button onClick={() => navigate('/login')}>Login</button>
         </div>
       )}
       {error && <p>Error: {error}</p>}
