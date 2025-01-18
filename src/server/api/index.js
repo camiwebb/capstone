@@ -56,14 +56,17 @@ router.post('/login', async (req, res, next) => {
   try {
     const { username, password } = req.body;
     const result = await client.query('SELECT * FROM users WHERE username = $1', [username]);
+    console.log('Query Result:', result.rows);
 
     if (result.rows.length === 0) return res.status(404).json({ message: 'User not found' });
 
     const user = result.rows[0];
     const isPasswordValid = await bcrypt.compare(password, user.password);
+    console.log('Password Valid:', isPasswordValid);
     if (!isPasswordValid) return res.status(400).json({ message: 'Invalid password' });
 
     const token = jwt.sign({ userId: user.id }, SECRET_KEY, { expiresIn: '1h' });
+    console.log('Generated Token:', token);
     res.status(200).json({ message: 'You have successfully logged in', token });
   } catch (err) {
     next(err);
@@ -71,7 +74,7 @@ router.post('/login', async (req, res, next) => {
 });
 
 // Get logged-in user
-router.get('/me', authenticateUser, async (req, res, next) => {
+router.get('/account', authenticateUser, async (req, res, next) => {
   try {
     const user = await client.query('SELECT id, username, email FROM users WHERE id = $1', [req.userId]);
 

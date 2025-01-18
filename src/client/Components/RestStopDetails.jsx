@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom'; 
+import { useAuth } from './AuthContext';
 
 const RestStopDetails = ( {isLoggedIn} ) => {
   const { id } = useParams(); 
+  const { isAuthenticated } = useAuth();
   const [restStop, setRestStop] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [error, setError] = useState(null);
@@ -19,7 +21,7 @@ const RestStopDetails = ( {isLoggedIn} ) => {
   useEffect(() => {
     const fetchRestStop = async () => {
       try {
-        const response = await fetch(`http://localhost:3000/api/rest-stops/${id}`);
+        const response = await fetch(`/api/rest-stops/${id}`);
         if (!response.ok) {
           throw new Error('Rest stop not found');
         }
@@ -32,7 +34,7 @@ const RestStopDetails = ( {isLoggedIn} ) => {
 
     const fetchReviews = async () => {
       try {
-       const response = await fetch(`http://localhost:3000/api/rest-stops/${id}/reviews`);
+       const response = await fetch(`/api/rest-stops/${id}/reviews`);
         if (!response.ok) {
           throw new Error('Failed to fetch reviews');
         }
@@ -64,7 +66,7 @@ const RestStopDetails = ( {isLoggedIn} ) => {
         Go Back
       </button>
       
-      {isLoggedIn && (
+      {isAuthenticated && (
         <button className="add-review-button" onClick={handleAddReview}>
           Add Review
         </button>
@@ -75,11 +77,8 @@ const RestStopDetails = ( {isLoggedIn} ) => {
       <ul className="reviews-list">
         {reviews.map((review) => (
           <li key={review.id} className="review-item">
-            {/* Show review text */}
             <p><strong>Review:</strong> {review.review_text}</p>
-            {/* Show rating */}
             <p><strong>Rating:</strong> {review.rating}</p>
-            {/* Optionally format `created_at` */}
             <p><strong>Created At:</strong> {new Date(review.created_at).toLocaleDateString()}</p>
           </li>
         ))}

@@ -1,13 +1,18 @@
 import React, { useState } from "react";
 import { useAuth } from "./AuthContext";
+import { useNavigate } from "react-router-dom";
 
-const ReviewForm = ({ onSubmit }) => {
+const ReviewForm = ({ restStopId, onSubmit }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [review, setReview] = useState({
     content: "",
     rating: "",
   });
+
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -30,9 +35,10 @@ const ReviewForm = ({ onSubmit }) => {
     const reviewData = {
       ...review,
       userId: user.id,
+      restStopId: restStopId,
     };
     
-    fetch("http://localhost:3000/api/reviews", {
+    fetch("/api/reviews", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -51,14 +57,16 @@ const ReviewForm = ({ onSubmit }) => {
           content: "",
           rating: "",
         });
+        setSuccess("Your review has been submitted!");
+        setError("");
   
-        onSubmit && onSubmit(review);
-
-      alert("Your review has been submitted!");
+        if (onSubmit) onSubmit(data);
+        navigate(`/rest-stops/${restStopId}`);
     })
     .catch((error) => {
       console.error("Error submitting review:", error);
-      alert("There was an error submitting your review. Please try again later.");
+      setError("There was an error submitting your review. Please try again later.");
+      setSuccess("");
     });
 };
 
