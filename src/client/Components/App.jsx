@@ -9,7 +9,7 @@ import CommentSection from './CommentSection';
 import Account from './Account';
 import ReviewForm from './ReviewForm';
 import AuthForm from './AuthForm';
-import LoginForm from './LoginForm';
+import ProtectedRoute from './ProtectedRoute';
 
 function App() {
 
@@ -23,10 +23,10 @@ function App() {
           <Route path="/rest-stops" element={<RestStopList />} />
           <Route path="/rest-stops/:id" element={<RestStopDetails />} />
           <Route path="/comment-section" element={<CommentSection />} />
-          <Route path="/account" element={<Account />} />
-          <Route path="/add-review" element={<ReviewForm />} />
-          <Route path="/sign-up" element={<AuthForm />} />
-          <Route path="/login" element={<LoginForm />} />
+          <Route path="/account" element={<ProtectedRoute element={<Account />} />} />
+          <Route path="/add-review" element={<ProtectedRoute element={<ReviewForm />} />} />
+          <Route path="/sign-up" element={<AuthForm type="register"/>} />
+          <Route path="/login" element={<AuthForm type="login" />} />
         </Routes>
       </div>
 

@@ -1,7 +1,6 @@
 require('dotenv').config();
 const express = require("express");
 const { syncAndSeed, client } = require('./db');
-
 const app = require('./app');
 
 const init = async ()=> {

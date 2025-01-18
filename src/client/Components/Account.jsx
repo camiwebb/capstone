@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from './AuthContext';
 
 const Account = () => {
+  const { authData } = useAuth();
   const [userDetails, setUserDetails] = useState(null);
   const [userReviews, setUserReviews] = useState([]);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  const token = localStorage.getItem('token');
+  const token = authData.token;
   const loggedIn = Boolean(token);
 
   useEffect(() => {
@@ -15,13 +17,13 @@ const Account = () => {
       navigate('/login');
     } else {
       fetchUserDetails();
-      fetchUserReviews();
+      if (userDetails) fetchUserDetails();
     }
-  }, [loggedIn, navigate]);
+  }, [loggedIn, navigate, userDetails]);
 
   const fetchUserDetails = async () => {
     try {
-      const response = await fetch('/api/me', {
+      const response = await fetch('/api/account', {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -36,9 +38,7 @@ const Account = () => {
 
   const fetchUserReviews = async () => {
     try {
-      if (!userDetails) return;
-      
-      const response = await fetch(`http://localhost:3000/api/users/${userDetails.id}/reviews`, {
+      const response = await fetch(`/api/reviews/me`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -47,7 +47,12 @@ const Account = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch user reviews');
+        if (response.status === 401) {
+          setError('Session expired. Please log in again.');
+          navigate('/login');
+        } else {
+          throw new Error('Failed to fetch user reviews');
+        }
       }
       const data = await response.json();
       setUserReviews(data);
