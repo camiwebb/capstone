@@ -6,6 +6,8 @@ const bcrypt = require('bcrypt');
 const authenticateUser = require('./authMiddleware');
 const jwt = require('jsonwebtoken');
 
+const SECRET_KEY = process.env.SECRET_KEY;
+
 // Register route
 router.post('/register', async (req, res, next) => {
   try {
@@ -98,27 +100,6 @@ router.get('/rest-stops/:id', async (req, res, next) => {
     }
 
     res.status(200).json(restStop);
-  } catch (err) {
-    next(err);
-  }
-});
-
-// Add a new rest stop
-router.post('/rest-stops', async (req, res, next) => {
-  try {
-      const { name, description, rating } = req.body;
-
-      if (!name || !description || !rating ) {
-        return res.status(400).json({ message: 'Missing required fields'})
-      }
-
-      const result = await client.query(
-        'INSERT INTO rest_stops (name, description, average_rating) VALUES ($1, $2, $3) RETURNING *',
-        [name, description, rating]
-      );
-
-      const newRestStop = result.rows[0];
-      res.status(201).json({ message: 'Rest stop created successfully', restStop: newRestStop });
   } catch (err) {
     next(err);
   }
