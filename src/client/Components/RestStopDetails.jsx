@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom'; 
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 
-const RestStopDetails = ( {isLoggedIn} ) => {
+const RestStopDetails = () => {
   const { id } = useParams(); 
   const { isAuthenticated } = useAuth();
   const [restStop, setRestStop] = useState(null);
@@ -34,7 +34,7 @@ const RestStopDetails = ( {isLoggedIn} ) => {
 
     const fetchReviews = async () => {
       try {
-       const response = await fetch(`/api/rest-stops/${id}/reviews`);
+        const response = await fetch(`/api/rest-stops/${id}/reviews`);
         if (!response.ok) {
           throw new Error('Failed to fetch reviews');
         }
@@ -58,14 +58,15 @@ const RestStopDetails = ( {isLoggedIn} ) => {
   }
 
   return (
-    <div className='rest-stop-container'>
+    <div className="rest-stop-container">
       <h1>{restStop.name}</h1>
       <p>{restStop.description}</p>
-      <p className='rating'>Rating: {restStop.average_rating}</p>
+      <p className="rating">Rating: {restStop.average_rating}</p>
+
       <button className="back-button" onClick={goBack}>
         Go Back
       </button>
-      
+
       {isAuthenticated && (
         <button className="add-review-button" onClick={handleAddReview}>
           Add Review
@@ -73,20 +74,27 @@ const RestStopDetails = ( {isLoggedIn} ) => {
       )}
 
       <h2>Reviews</h2>
-    {reviews.length > 0 ? (
-      <ul className="reviews-list">
-        {reviews.map((review) => (
-          <li key={review.id} className="review-item">
-            <p><strong>Review:</strong> {review.review_text}</p>
-            <p><strong>Rating:</strong> {review.rating}</p>
-            <p><strong>Created At:</strong> {new Date(review.created_at).toLocaleDateString()}</p>
-          </li>
-        ))}
-      </ul>
-    ) : (
-      <p>No reviews yet. Be the first to add one!</p>
-    )}
 
+      {reviews.length > 0 ? (
+        <ul className="reviews-list">
+          {reviews.map((review) => (
+            <li key={review.id} className="review-item">
+              <p><strong>Review:</strong> {review.review_text}</p>
+              <p><strong>Rating:</strong> {review.rating}</p>
+              <p><strong>Created At:</strong> {new Date(review.created_at).toLocaleDateString()}</p>
+
+              <button
+                className="view-details-button"
+                onClick={() => navigate(`/reviews/${review.id}`)}
+              >
+                View Details
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>No reviews yet. Be the first to add one!</p>
+      )}
     </div>
   );
 };

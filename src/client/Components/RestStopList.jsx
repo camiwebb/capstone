@@ -4,24 +4,18 @@ import { useNavigate } from 'react-router-dom';
 const RestStopList = () => {
   const [restStops, setRestStops] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchRestStops = async () => {
       try {
         const response = await fetch('/api/rest-stops');
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch rest stops.');
-        }
-
         const data = await response.json();
-
-        setRestStops(data); 
+        console.log(data);
+        setRestStops(data);
+        setLoading(false);
       } catch (err) {
-        setError(err.message);
-      } finally {
+        console.error('Error fetching rest stops:', err);
         setLoading(false);
       }
     };
@@ -37,13 +31,10 @@ const RestStopList = () => {
     return <div>Loading...</div>;
   }
 
-  if (error) {
-    return <div>Error: {error}</div>; 
-  }
-
   return (
     <div className="rest-stop-list">
       <h1>Rest Stops</h1>
+
       <div className="rest-stop-cards">
         {restStops.length > 0 ? (
           restStops.map((stop) => (

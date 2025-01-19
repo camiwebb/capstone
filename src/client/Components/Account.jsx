@@ -7,6 +7,7 @@ const Account = () => {
   const [userDetails, setUserDetails] = useState(null);
   const [userReviews, setUserReviews] = useState([]);
   const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   const token = authData.token;
@@ -15,55 +16,42 @@ const Account = () => {
   useEffect(() => {
     if (!loggedIn) {
       navigate('/login');
-    } else {
-      fetchUserDetails();
-      if (userDetails) fetchUserDetails();
+      return;
     }
-  }, [loggedIn, navigate, userDetails]);
 
-  const fetchUserDetails = async () => {
-    try {
-      const response = await fetch('/api/account', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
 
-      if (!response.ok) throw new Error('Failed to fetch user details');
+        const userResponse = await fetch('/api/account', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!userResponse.ok) throw new Error('Failed to fetch user details');
+        const userData = await userResponse.json();
+        setUserDetails(userData);
 
-      const data = await response.json();
-      setUserDetails(data);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
+        const reviewsResponse = await fetch(`/api/reviews/me`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (!reviewsResponse.ok) throw new Error('Failed to fetch user reviews');
+        const reviewsData = await reviewsResponse.json();
+        setUserReviews(reviewsData);
 
-  const fetchUserReviews = async () => {
-    try {
-      const response = await fetch(`/api/reviews/me`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          setError('Session expired. Please log in again.');
-          navigate('/login');
-        } else {
-          throw new Error('Failed to fetch user reviews');
-        }
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
       }
-      const data = await response.json();
-      setUserReviews(data);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
+    };
+
+    fetchData();
+  }, [loggedIn, navigate, token]);
 
   return (
     <div>
-      {loggedIn ? (
+      {isLoading ? (
+        <p>Loading...</p>
+      ) : loggedIn ? (
         <div>
           <h2>Your Account</h2>
           {userDetails ? (
