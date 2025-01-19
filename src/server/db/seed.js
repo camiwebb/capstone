@@ -2,8 +2,14 @@ require('dotenv').config();
 const client = require('./client');
 
 const users = [
-    { username: 'johndoe', email: 'johndoe@example.com', password: 'password123', role: 'user'},
-    { username: 'janedoe', email: 'janedoe@example.com', password: 'password456', role: 'admin'}
+    { username: 'johndoe', email: 'johndoe@example.com', password: 'password123', name: 'John Doe' },
+    { username: 'janedoe', email: 'janedoe@example.com', password: 'password456', name: 'Jane Doe' },
+    { username: 'alice', email: 'alice@example.com', password: 'password789', name: 'Alice Wonderland' },
+    { username: 'bob', email: 'bob@example.com', password: 'password101', name: 'Bob Builder' },
+    { username: 'charlie', email: 'charlie@example.com', password: 'password202', name: 'Charlie Brown' },
+    { username: 'david', email: 'david@example.com', password: 'password303', name: 'David Copperfield' },
+    { username: 'eve', email: 'eve@example.com', password: 'password404', name: 'Eve Adams' },
+    { username: 'frank', email: 'frank@example.com', password: 'password505', name: 'Frank Sinatra' }
 ];
 
 const restStops = [
@@ -45,12 +51,47 @@ const reviews = [
     { rating: 5, review_text: 'Loved the hiking trail nearby!', rest_stop_index: 6 }, 
     { rating: 4, review_text: 'Great for a quick snack and rest.', rest_stop_index: 7 },
     { rating: 5, review_text: 'Amazing views of the lake!', rest_stop_index: 18 },
+    { rating: 4, review_text: 'Good place for a quick stop, but could be cleaner.', rest_stop_index: 0 },
+    { rating: 3, review_text: 'It was busy when I stopped, but the restrooms were clean.', rest_stop_index: 2 },
+    { rating: 5, review_text: 'Loved the peaceful surroundings!', rest_stop_index: 3 },
+    { rating: 4, review_text: 'Clean and well-maintained facilities, but could use more shade.', rest_stop_index: 4 },
+    { rating: 5, review_text: 'Great location, perfect for long drives!', rest_stop_index: 5 },
   ];
 
   const comments = [
     { reviewIndex: 0, userIndex: 1, comment_text: 'I agree, great place!' },
-    { reviewIndex: 1, userIndex: 0, comment_text: 'It was okay, could use more vending options.' }
+    { reviewIndex: 1, userIndex: 0, comment_text: 'It was okay, could use more vending options.' },
+    { reviewIndex: 0, userIndex: 2, comment_text: 'Absolutely! I love stopping here on road trips.' },
+    { reviewIndex: 2, userIndex: 3, comment_text: 'The restrooms were top notch, very impressed.' },
+    { reviewIndex: 3, userIndex: 4, comment_text: 'I agree, the environment is so calming.' },
+    { reviewIndex: 4, userIndex: 1, comment_text: 'I hope they improve the maintenance soon.' },
+    { reviewIndex: 6, userIndex: 2, comment_text: 'I love the trails here too! Great spot for a hike.' },
+    { reviewIndex: 8, userIndex: 5, comment_text: 'The views were breathtaking! Worth the stop.' },
+    { reviewIndex: 10, userIndex: 6, comment_text: 'I felt the same, a bit crowded, but still nice.' },
+    { reviewIndex: 5, userIndex: 7, comment_text: 'Vending options were great, but more seating would be nice.' },
+    { reviewIndex: 7, userIndex: 0, comment_text: 'Absolutely, perfect for a road trip break!' },
+    { reviewIndex: 9, userIndex: 3, comment_text: 'Views were stunning, highly recommend this stop.' },
 ];
+
+const validateSeedData = () => {
+    const invalidReviews = reviews.filter(review =>
+        review.rest_stop_index < 0 || review.rest_stop_index >= restStops.length
+    );
+    if (invalidReviews.length > 0) {
+        console.error('Invalid rest_stop_index found in reviews:', invalidReviews);
+        throw new Error('Invalid rest_stop_index detected.');
+    }
+
+    const invalidComments = comments.filter(comment =>
+        comment.reviewIndex < 0 || comment.reviewIndex >= reviews.length
+    );
+    if (invalidComments.length > 0) {
+        console.error('Invalid reviewIndex found in comments:', invalidComments);
+        throw new Error('Invalid reviewIndex detected.');
+    }
+
+    console.log('Seed data validation passed.');
+};
 
 const createTables = async () => {
     const SQL = /*SQL*/ `
@@ -66,8 +107,7 @@ const createTables = async () => {
             username VARCHAR(100) UNIQUE NOT NULL,
             email VARCHAR(100) UNIQUE NOT NULL,
             password TEXT NOT NULL,
-            name VARCHAR(100) NOT NULL,
-            role VARCHAR(20) DEFAULT 'user'
+            name VARCHAR(100) NOT NULL
         );
 
         CREATE TABLE rest_stops (
@@ -91,7 +131,8 @@ const createTables = async () => {
             review_id UUID REFERENCES reviews(id) ON DELETE CASCADE ON UPDATE CASCADE,
             user_id UUID REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
             comment_text TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT current_timestamp
+            created_at TIMESTAMP DEFAULT current_timestamp,
+            updated_at TIMESTAMP DEFAULT NOW()
         );
     `;
 
@@ -107,11 +148,14 @@ const createTables = async () => {
 
 const seedData = async ()=> {
     try {
+        validateSeedData();
+
+
         const userResults = await Promise.all(
             users.map(user =>
                 client.query(
                     `INSERT INTO users (username, email, password, name) VALUES ($1, $2, $3, $4) RETURNING id`,
-                    [user.username, user.email, user.password, user.role]
+                    [user.username, user.email, user.password, user.name]
                 )
             )
         );
@@ -125,34 +169,46 @@ const seedData = async ()=> {
             )
         );
 
-        console.log('Inserted Rest Stops:', restStopResults);
-
         const reviewResults = await Promise.all(
-            reviews.map((review, index) =>
-                client.query(
+            reviews.map(review => {
+                const randomUser = userResults[Math.floor(Math.random() * userResults.length)].rows[0].id;
+                return client.query(
                     `INSERT INTO reviews (user_id, location_id, rating, review_text) VALUES ($1, $2, $3, $4) RETURNING id`,
                     [
-                        userResults[index % userResults.length].rows[0].id,
-                        restStopResults[index % restStopResults.length].rows[0].id,
+                        randomUser,
+                        restStopResults[review.rest_stop_index].rows[0].id,
                         review.rating,
                         review.review_text
                     ]
-                )
-            )
+                );
+            })
         );
 
         await Promise.all(
-            comments.map(comment =>
-                client.query(
-                    `INSERT INTO comments (review_id, user_id, comment_text) VALUES ($1, $2, $3)`,
-                    [
-                        reviewResults[comment.reviewIndex].rows[0].id,
-                        userResults[comment.userIndex].rows[0].id,
-                        comment.comment_text
-                    ]
-                )
-            )
-        );
+            comments.map(comment => {
+                const reviewResult = reviewResults[comment.reviewIndex];
+                const userResult = userResults[comment.userIndex];
+            
+                if (!reviewResult || !reviewResult.rows || reviewResult.rows.length === 0) {
+                  console.error(`Invalid review at index ${comment.reviewIndex}`);
+                  return; // Skip this iteration or handle it accordingly
+                }
+                if (!userResult || !userResult.rows || userResult.rows.length === 0) {
+                  console.error(`Invalid user at index ${comment.userIndex}`);
+                  return; // Skip this iteration or handle it accordingly
+                }
+            
+                return client.query(
+                  `INSERT INTO comments (review_id, user_id, comment_text) VALUES ($1, $2, $3)`,
+                  [
+                    reviewResult.rows[0].id,
+                    userResult.rows[0].id,
+                    comment.comment_text
+                  ]
+                );
+              })
+            );
+            
 
         console.log('Seed data inserted successfully.');
     } catch (err) {

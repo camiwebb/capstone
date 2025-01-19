@@ -2,32 +2,9 @@ require('dotenv').config();
 const express = require('express');
 const client = require('../db/client');
 const router = express.Router();
-const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-// const { user, restStop, review, comment } = require('../db/seed.js');
-
-const SECRET_KEY = process.env.SECRET_KEY;
-
-// Verify token for routes requiring authentication
-const authenticateUser = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  console.log('Authorization Header:', authHeader);
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ message: 'User not authenticated' });
-  }
-
-  const token = authHeader.split(' ')[1];
-  try {
-    const decoded = jwt.verify(token, SECRET_KEY);
-    console.log('Decoded Token:', decoded);
-    req.userId = decoded.id;
-    next();
-  } catch (err) {
-    console.error('Token verification failed:', err.message);
-    return res.status(401).json({ message: 'User not authenticated' });
-  }
-};
+const authenticateUser = require('./authMiddleware');
+const jwt = require('jsonwebtoken');
 
 // Register route
 router.post('/register', async (req, res, next) => {
@@ -76,8 +53,12 @@ router.post('/login', async (req, res, next) => {
 // Get logged-in user
 router.get('/account', authenticateUser, async (req, res, next) => {
   try {
+    console.log('User ID from Token:', req.userId);
+    
     const user = await client.query('SELECT id, username, email FROM users WHERE id = $1', [req.userId]);
 
+    console.log('User query result:', user.rows);
+    
     if (!user.rows.length) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -109,7 +90,7 @@ router.get('/rest-stops/:id', async (req, res, next) => {
   const { id } = req.params;
 
   try {
-    const result = await client.query('SELECT * FROM rest_stops WHERE id = $1::uuid', [id]);
+    const result = await client.query('SELECT * FROM rest_stops WHERE id = $1', [id]);
     const restStop = result.rows[0];
 
     if (!restStop) {
@@ -177,7 +158,12 @@ router.post('/reviews', authenticateUser, async (req, res, next) => {
 router.get('/rest-stops/:itemId/reviews', async (req, res, next) => {
   try {
     const { itemId } = req.params;
-    const result = await client.query('SELECT * FROM reviews WHERE location_id = $1', [itemId]);
+
+    const isValidUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(itemId);
+    if (!isValidUUID) {
+  return res.status(400).json({ message: 'Invalid UUID format for itemId' });
+    }
+    const result = await client.query('SELECT * FROM reviews WHERE location_id = $1::uuid', [itemId]);
     const reviews = result.rows;
 
     console.log('Fetched reviews:', reviews);
@@ -199,6 +185,14 @@ router.post('/rest-stops/:itemId/reviews', authenticateUser, async (req, res, ne
       'INSERT INTO reviews (user_id, location_id, rating, review_text) VALUES ($1, $2, $3, $4) RETURNING *',
       [userId, itemId, rating, reviewText]
     );
+
+    const existingReview = await client.query(
+      'SELECT * FROM reviews WHERE user_id = $1 AND location_id = $2',
+      [userId, itemId]
+    );
+    if (existingReview.rows.length) {
+      return res.status(400).json({ message: 'You have already reviewed this item.' });
+    }    
 
     const newReview = result.rows[0];
     res.status(201).json(newReview);
@@ -244,6 +238,31 @@ router.put('/reviews/:reviewId', authenticateUser, async (req, res, next) => {
 
     const updatedReview = updatedReviewResult.rows[0];
     res.status(200).json(updatedReview);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Get details of a specific review
+router.get('/reviews/:reviewId', async (req, res, next) => {
+  const { reviewId } = req.params;
+
+  try {
+    const result = await client.query(
+      `SELECT reviews.*, users.username AS author 
+       FROM reviews 
+       JOIN users ON reviews.user_id = users.id
+       WHERE reviews.id = $1`,
+      [reviewId]
+    );
+
+    const review = result.rows[0];
+
+    if (!review) {
+      return res.status(404).json({ message: 'Review not found' });
+    }
+
+    res.status(200).json(review);
   } catch (err) {
     next(err);
   }
@@ -323,6 +342,21 @@ router.delete('/comments/:commentId', authenticateUser, async (req, res, next) =
   }
 });
 
+//Fetch comment for specific review
+router.get('/reviews/:reviewId/comments', async (req, res, next) => {
+  try {
+    const { reviewId } = req.params;
+    const result = await client.query(
+      'SELECT c.*, u.username FROM comments c JOIN users u ON c.user_id = u.id WHERE review_id = $1 ORDER BY created_at ASC',
+      [reviewId]
+    );
+    res.status(200).json(result.rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+
 // Delete a review
 router.delete('/reviews/:reviewId', authenticateUser, async (req, res, next) => {
   try {
@@ -346,6 +380,40 @@ router.delete('/reviews/:reviewId', authenticateUser, async (req, res, next) => 
     res.status(204).send();
   } catch (err) {
     next(err);
+  }
+});
+
+// Search for rest stops
+router.get('/rest-stops/search', async (req, res) => { 
+  const searchTerm = req.query.q;
+
+  console.log('Search Term:', searchTerm);
+  
+
+  if (!searchTerm) {
+    return res.status(400).json({ error: 'Search term is required' });
+  }
+
+  try {
+    if (typeof searchTerm !== 'string') {
+      return res.status(400).json({ error: 'Invalid search term format' });
+    }
+
+    const result = await client.query(
+      `SELECT * FROM rest_stops WHERE name ILIKE $1`,
+      [`%${searchTerm}%`]
+    );
+
+    const restStops = result.rows;
+    if (restStops.length === 0) {
+      return res.status(404).json({ message: 'No rest stops found' });
+    }
+
+    res.status(200).json(restStops);
+  } catch (err) {
+    console.error('Error searching rest stops:', err);
+    console.error('Full error:', err);
+    res.status(500).json({ message: 'Error searching rest stops' });
   }
 });
 
